@@ -2,11 +2,16 @@
 
 HTML 파일을 등록하고, 모아보고, 카드를 클릭해 별도 창으로 여는 Windows 데스크톱 앱입니다. Electron + React로 동작하며 백엔드·계정·네트워크 연결이 필요하지 않습니다.
 
+## 다운로드
+
+[최신 버전 다운로드](https://github.com/jehee826/HTMLViewer/releases/latest)에서 설치형 `setup.exe` 또는 무설치형 `portable.exe`를 받습니다. 저장소는 비공개이므로 접근 권한이 있는 GitHub 계정으로 로그인해야 합니다. 버전별 변경 사항은 각 릴리즈에 안내합니다.
+
 ## 사용 방법
 
 1. **HTML 등록**으로 `.html` 또는 `.htm` 파일을 선택합니다.
 2. 등록된 카드를 클릭해 별도 창에서 실행합니다. 실행 창을 닫아도 보관함은 유지됩니다.
 3. 제목 검색, 제목 수정, 카테고리 추가·수정·삭제로 정리할 수 있습니다.
+4. 문서 실행 창에서 **Ctrl+F**로 본문을 검색합니다. **Enter**는 다음 결과, **Shift+Enter**는 이전 결과, **Esc**는 검색 닫기입니다. 오른쪽 검색바에 현재 결과와 전체 개수를 표시합니다.
 
 CSS·JavaScript·이미지가 내부에 포함된 **단일 HTML 파일**을 지원합니다. 옆 폴더의 CSS·JS·이미지, CDN, 외부 API, 외부 페이지, 팝업, iframe, 다운로드와 장치 접근은 지원하지 않습니다. 내부 스크립트와 data/blob 이미지 등은 실행됩니다. 원본 파일의 바이트와 인코딩은 복사 과정에서 변경하지 않습니다.
 
@@ -14,8 +19,14 @@ CSS·JavaScript·이미지가 내부에 포함된 **단일 HTML 파일**을 지�
 
 `npm run dist` 실행 후 `release` 폴더에 생성됩니다.
 
-- `HTMLViewer-0.1.0-x64-setup.exe`: 설치 파일, 사용자별 설치 및 설치 경로 선택.
-- `HTMLViewer-0.1.0-x64-portable.exe`: 설치 없이 실행하는 단일 파일.
+- `HTMLViewer-0.1.1-x64-setup.exe`: 설치 파일, 사용자별 설치 및 설치 경로 선택.
+- `HTMLViewer-0.1.1-x64-portable.exe`: 설치 없이 실행하는 단일 파일.
+
+### 기존 설치본 업데이트
+
+HTMLViewer의 관리 창과 문서 창을 모두 종료한 뒤 새 `setup.exe`를 실행합니다. 기존과 같은 설치 경로와 사용자별 설치 방식을 사용하면 설치본이 업데이트됩니다. 앱 ID·이름·저장 경로·데이터 형식은 유지하므로 등록한 HTML과 HTML별 저장 데이터는 그대로 사용합니다. 기존 앱을 먼저 제거할 필요는 없습니다.
+
+무설치형은 앱을 종료하고 새 포터블 EXE로 교체하면 됩니다. 앱 안에서 자동으로 업데이트를 내려받는 기능은 제공하지 않습니다.
 
 코드 서명 인증서를 적용하지 않은 빌드입니다. 배포·다운로드 경로와 Windows 정책에 따라 알 수 없는 게시자 또는 SmartScreen 경고가 표시될 수 있습니다.
 
@@ -69,6 +80,7 @@ set "HTMLVIEWER_SMOKE_EXE="
 - `electron/preload.cjs`: 관리 화면에 필요한 고정 API만 노출.
 - `electron/library.cjs`: 파일 복사·삭제, 입력 검증, JSON 저장, 쓰기 요청 직렬화.
 - `electron/security.cjs`: HTML 요청 경로 검증과 콘텐츠 보안 정책.
+- `electron/document-find.cjs`, `electron/find*`: 문서와 분리된 검색바 및 Chromium 본문 검색.
 - `src/`: React 보관함 화면.
 - `test/`, `scripts/smoke.cjs`: 데이터 보존·실행 격리 및 실제 앱 흐름 검증.
 
