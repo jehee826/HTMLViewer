@@ -1,22 +1,56 @@
-# HTMLViewer
+<div align="center">
+
+<img src="docs/assets/htmlviewer.svg" width="88" height="88" alt="HTMLViewer 로고" />
+
+<h1>HTMLViewer</h1>
+
+<p><strong>흩어진 HTML 공부 자료를, 한곳에.</strong></p>
+
+<p>
+  <img src="https://img.shields.io/badge/Windows-x64-2563EB?style=flat-square" alt="Windows x64 지원" />
+  <img src="https://img.shields.io/badge/%EC%9E%90%EB%A3%8C%20%EB%B3%B4%EA%B4%80-%EB%82%B4%20%EC%BB%B4%ED%93%A8%ED%84%B0-0F766E?style=flat-square" alt="자료는 내 컴퓨터에 보관" />
+  <img src="https://img.shields.io/badge/%EC%95%B1%20%EC%82%AC%EC%9A%A9-%EC%98%A4%ED%94%84%EB%9D%BC%EC%9D%B8-64748B?style=flat-square" alt="앱은 오프라인에서 사용" />
+</p>
+
+<p>
+  <a href="https://github.com/jehee826/HTMLViewer/releases/latest">
+    <img src="https://img.shields.io/badge/%EC%B5%9C%EC%8B%A0%20%EB%B2%84%EC%A0%84-%EB%8B%A4%EC%9A%B4%EB%A1%9C%EB%93%9C-5965D9?style=for-the-badge&amp;logo=github&amp;logoColor=white" alt="최신 버전 다운로드" />
+  </a>
+</p>
+
+<p><sub>다운로드하려면 저장소 초대를 수락한 GitHub 계정으로 로그인해 주세요.</sub></p>
+
+<p>
+  <a href="#다운로드하고-시작하기">처음 사용하기</a> ·
+  <a href="#html-파일-열기">HTML 열기</a> ·
+  <a href="#내-자료는-어떻게-보관되나요">자료 보관</a> ·
+  <a href="#새-버전으로-업데이트하기">업데이트</a>
+</p>
+
+</div>
+
+---
 
 **공부 자료나 문제풀이 HTML 파일을 한곳에 모아두고, 클릭해서 여는 Windows 앱입니다.**
 
 HTML은 이름이 `.html` 또는 `.htm`으로 끝나는 웹페이지 형식의 파일입니다. 직접 만들었거나 전달받은 학습 자료를 보관함에 등록해 두면, 필요할 때 쉽게 찾아 열 수 있습니다.
 
-**파일 등록 → 보관함에서 모아보기 → 클릭해서 열기**
+|       📁 01. 파일 등록       |       🗂️ 02. 모아보기       |     ↗️ 03. 클릭해서 열기     |
+| :--------------------------: | :-------------------------: | :--------------------------: |
+| HTML 파일 하나를 선택하세요. | 보관함에서 찾고 분류하세요. | 별도 창에서 바로 사용하세요. |
 
 자료는 내 컴퓨터에 저장됩니다. 앱을 사용할 때는 로그인이나 인터넷 연결이 필요하지 않습니다.
 
 ## 다운로드하고 시작하기
 
-1. **[최신 버전 다운로드](https://github.com/jehee826/HTMLViewer/releases/latest)** 페이지를 엽니다. 비공개 저장소이므로 **초대받은 GitHub 계정으로 로그인**해야 합니다.
+1. 위쪽 **다운로드 버튼**이나 **[최신 버전 다운로드](https://github.com/jehee826/HTMLViewer/releases/latest)** 링크를 누릅니다.
 2. 페이지 아래쪽 **Assets(첨부 파일)**에서 이름이 **`-setup.exe`**로 끝나는 파일을 받습니다.
 3. 받은 파일을 실행해 설치한 뒤, 바탕 화면이나 시작 메뉴에서 **HTMLViewer**를 엽니다.
 
 Windows 64비트(x64) PC용입니다. 처음 사용한다면 위의 **설치형**을 선택하세요. 설치 없이 사용하고 싶다면 **`-portable.exe`**로 끝나는 파일을 받아 바로 실행할 수 있습니다. 두 파일의 앱 기능은 같습니다.
 
-현재 배포 파일에는 게시자를 확인하는 전자 서명이 없어 Windows에서 실행 경고가 표시될 수 있습니다. 파일이 위의 공식 다운로드 페이지에서 받은 것인지 확인하세요.
+> [!NOTE]
+> 현재 배포 파일에는 게시자를 확인하는 전자 서명이 없어 Windows에서 실행 경고가 표시될 수 있습니다. 파일이 위의 공식 다운로드 페이지에서 받은 것인지 확인하세요.
 
 ## HTML 파일 열기
 
@@ -29,7 +63,7 @@ Windows 64비트(x64) PC용입니다. 처음 사용한다면 위의 **설치형*
 ## 자료 찾고 정리하기
 
 - **보관함에서 찾기:** 위쪽 검색창에 자료의 제목을 입력합니다.
-- **문서 안에서 찾기:** 문서 창에서 **Ctrl+F**를 누릅니다. 검색 결과 개수가 표시되며, **Enter**는 다음 결과, **Shift+Enter**는 이전 결과, **Esc**는 검색 닫기입니다.
+- **문서 안에서 찾기:** 문서 창에서 <kbd>Ctrl</kbd> + <kbd>F</kbd>를 누릅니다. 검색 결과 개수가 표시되며, <kbd>Enter</kbd>는 다음 결과, <kbd>Shift</kbd> + <kbd>Enter</kbd>는 이전 결과, <kbd>Esc</kbd>는 검색 닫기입니다.
 - **자료 정리하기:** 카드 아래의 연필 버튼으로 제목과 카테고리를 바꿉니다. 왼쪽 **카테고리 관리**에서 분류를 추가하거나 수정할 수 있습니다. 카테고리를 삭제해도 자료는 **미분류**에 남습니다.
 - **자료 삭제하기:** 카드 아래의 휴지통 버튼을 누릅니다. **보관함의 복사본과 해당 문서가 저장한 내용이 삭제되며, 되돌릴 수 없습니다.** 처음 등록할 때 선택했던 원본 파일은 유지됩니다.
 
@@ -61,6 +95,11 @@ Windows 64비트(x64) PC용입니다. 처음 사용한다면 위의 **설치형*
 
 <details>
 <summary>개발자용: 소스에서 직접 빌드하기</summary>
+
+<p>
+  <img src="https://img.shields.io/badge/%EC%95%B1%20%EC%8B%A4%ED%96%89-Electron-47848F?style=flat-square&amp;logo=electron&amp;logoColor=white" alt="앱 실행 환경 Electron" />
+  <img src="https://img.shields.io/badge/%ED%99%94%EB%A9%B4%20%EA%B5%AC%EC%84%B1-React-149ECA?style=flat-square&amp;logo=react&amp;logoColor=white" alt="화면 구성 React" />
+</p>
 
 Electron + React 기반이며, 로컬 JSON과 파일로 자료를 보관합니다. 별도 백엔드나 DB 서버는 필요하지 않습니다.
 
