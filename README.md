@@ -7,6 +7,9 @@
 <p><strong>흩어진 HTML 공부 자료를, 한곳에.</strong></p>
 
 <p>
+  <a href="https://github.com/jehee826/HTMLViewer/releases/latest">
+    <img src="https://img.shields.io/github/v/release/jehee826/HTMLViewer?style=flat-square&amp;label=%EC%B5%9C%EC%8B%A0%20%EB%B2%84%EC%A0%84&amp;color=5965D9" alt="최신 릴리즈 버전" />
+  </a>
   <img src="https://img.shields.io/badge/Windows-x64-2563EB?style=flat-square" alt="Windows x64 지원" />
   <img src="https://img.shields.io/badge/%EC%9E%90%EB%A3%8C%20%EB%B3%B4%EA%B4%80-%EB%82%B4%20%EC%BB%B4%ED%93%A8%ED%84%B0-0F766E?style=flat-square" alt="자료는 내 컴퓨터에 보관" />
   <img src="https://img.shields.io/badge/%EC%95%B1%20%EC%82%AC%EC%9A%A9-%EC%98%A4%ED%94%84%EB%9D%BC%EC%9D%B8-64748B?style=flat-square" alt="앱은 오프라인에서 사용" />
@@ -18,7 +21,7 @@
   </a>
 </p>
 
-<p><sub>다운로드하려면 저장소 초대를 수락한 GitHub 계정으로 로그인해 주세요.</sub></p>
+<p><sub>Windows 64비트 PC용 · 회원가입이나 로그인 없이 다운로드할 수 있습니다.</sub></p>
 
 <p>
   <a href="#다운로드하고-시작하기">처음 사용하기</a> ·
@@ -103,7 +106,7 @@ Windows 64비트(x64) PC용입니다. 처음 사용한다면 위의 **설치형*
 
 Electron + React 기반이며, 로컬 JSON과 파일로 자료를 보관합니다. 별도 백엔드나 DB 서버는 필요하지 않습니다.
 
-**준비:** Windows x64, Node.js 24 LTS, Git, 저장소 접근 권한.
+**준비:** Windows x64, Node.js 24 LTS, Git.
 
 CMD에서 아래 명령을 실행합니다.
 
