@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">HTMLViewer 로고</title>
+  <desc id="desc">보라색 둥근 사각형 안에 HTML 코드를 나타내는 꺾쇠와 빗금이 있는 아이콘</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4b56c8" />
+      <stop offset="1" stop-color="#8691ee" />
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="32" fill="url(#background)" />
+  <rect x="6" y="6" width="116" height="116" rx="27" fill="none" stroke="#fff" stroke-opacity=".18" />
+  <path d="m45 45-17 19 17 19m38-38 17 19-17 19M73 35 55 93" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
+</svg>
