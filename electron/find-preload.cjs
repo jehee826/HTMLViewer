@@ -1,6 +1,10 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("documentFind", {
+  onLanguage: (callback) =>
+    ipcRenderer.on("document-find:language", (_event, state) =>
+      callback(state),
+    ),
   search: (text, forward = true, next = false) =>
     ipcRenderer.send("document-find:command", {
       type: "search",

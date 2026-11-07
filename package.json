@@ -1,6 +1,6 @@
 {
   "name": "htmlviewer",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "완전 로컬 HTML 학습 자료 관리자",
   "author": "jehee826",
   "private": true,

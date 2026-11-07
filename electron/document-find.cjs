@@ -1,7 +1,8 @@
 const { WebContentsView, ipcMain } = require("electron");
 const path = require("node:path");
+const { translate } = require("./i18n.cjs");
 
-function attachDocumentFind(window) {
+function attachDocumentFind(window, getLanguage = () => "ko") {
   const contents = window.webContents;
   let bar;
   let ready = false;
@@ -19,6 +20,25 @@ function attachDocumentFind(window) {
     const [contentWidth] = window.getContentSize();
     const width = Math.min(420, contentWidth - 24);
     bar.setBounds({ x: contentWidth - width - 12, y: 12, width, height: 60 });
+  }
+
+  function refreshLanguage() {
+    const language = getLanguage();
+    const keys = [
+      "findTitle",
+      "findQuery",
+      "findResults",
+      "findPrevious",
+      "findNext",
+      "findClose",
+      "finding",
+    ];
+    send("document-find:language", {
+      language,
+      labels: Object.fromEntries(
+        keys.map((key) => [key, translate(language, key)]),
+      ),
+    });
   }
 
   function hide() {
@@ -64,6 +84,7 @@ function attachDocumentFind(window) {
       bar.webContents.on("before-input-event", onShortcut);
       bar.webContents.once("did-finish-load", () => {
         ready = true;
+        refreshLanguage();
         focus();
       });
       bar.webContents
@@ -143,6 +164,7 @@ function attachDocumentFind(window) {
     contents.removeListener("did-navigate", hide);
     if (bar && !bar.webContents.isDestroyed()) bar.webContents.close();
   });
+  return refreshLanguage;
 }
 
 module.exports = { attachDocumentFind };

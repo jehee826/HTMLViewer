@@ -1,19 +1,22 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
+const { translate, translatedError } = require("./i18n.cjs");
 
 const ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 function requireId(id) {
   if (typeof id !== "string" || !ID_PATTERN.test(id))
-    throw new Error("잘못된 항목 ID입니다.");
+    throw translatedError("invalidId");
   return id;
 }
 
 function requireName(value, label) {
   if (typeof value !== "string" || !value.trim() || value.trim().length > 100) {
-    throw new Error(`${label}은(는) 1~100자로 입력해 주세요.`);
+    throw translatedError(
+      label === "제목" ? "titleRequired" : "categoryRequired",
+    );
   }
   return value.trim();
 }
@@ -24,7 +27,7 @@ function validateLibrary(data) {
     !Array.isArray(data.items) ||
     !Array.isArray(data.categories)
   ) {
-    throw new Error("지원하지 않는 라이브러리 형식입니다.");
+    throw translatedError("unsupportedLibrary");
   }
   const categories = new Set();
   const names = new Set();
@@ -35,7 +38,7 @@ function validateLibrary(data) {
       categories.has(category.id) ||
       names.has(name.toLocaleLowerCase("ko"))
     ) {
-      throw new Error("중복된 카테고리입니다.");
+      throw translatedError("duplicateCategory");
     }
     categories.add(category.id);
     names.add(name.toLocaleLowerCase("ko"));
@@ -52,7 +55,7 @@ function validateLibrary(data) {
       typeof item.createdAt !== "string" ||
       !Number.isFinite(Date.parse(item.createdAt))
     ) {
-      throw new Error("잘못된 HTML 메타데이터입니다.");
+      throw translatedError("invalidMetadata");
     }
     items.add(item.id);
   }
@@ -60,7 +63,8 @@ function validateLibrary(data) {
 }
 
 class Library {
-  constructor(root) {
+  constructor(root, getLanguage = () => "ko") {
+    this.getLanguage = getLanguage;
     this.root = root;
     this.file = path.join(root, "library.json");
     this.files = path.join(root, "files");
@@ -76,9 +80,7 @@ class Library {
       );
     } catch (error) {
       if (error.code !== "ENOENT") {
-        throw new Error(
-          `library.json을 읽을 수 없습니다. 원본 데이터는 변경하지 않았습니다.\n${error.message}`,
-        );
+        throw translatedError("readLibrary", {}, error);
       }
       this.data = { version: 1, categories: [], items: [] };
       await this.save(this.data);
@@ -116,7 +118,7 @@ class Library {
   getItem(id) {
     requireId(id);
     const item = this.data.items.find((entry) => entry.id === id);
-    if (!item) throw new Error("등록된 HTML을 찾을 수 없습니다.");
+    if (!item) throw translatedError("itemNotFound");
     return { ...item };
   }
 
@@ -129,7 +131,7 @@ class Library {
     if (id === null) return;
     requireId(id);
     if (!this.data.categories.some((category) => category.id === id)) {
-      throw new Error("카테고리를 찾을 수 없습니다.");
+      throw translatedError("categoryNotFound");
     }
   }
 
@@ -137,17 +139,18 @@ class Library {
     return this.enqueue(async () => {
       this.requireCategory(categoryId);
       if (typeof source !== "string" || !/\.html?$/i.test(source)) {
-        throw new Error(".html 또는 .htm 파일을 선택해 주세요.");
+        throw translatedError("htmlOnly");
       }
       const stat = await fs.stat(source);
-      if (!stat.isFile()) throw new Error("HTML 파일을 선택해 주세요.");
+      if (!stat.isFile()) throw translatedError("fileRequired");
       const id = randomUUID();
       const directory = path.join(this.files, id);
       const originalFileName = path.basename(source);
       const item = {
         id,
         title:
-          path.parse(originalFileName).name.slice(0, 100).trim() || "제목 없음",
+          path.parse(originalFileName).name.slice(0, 100).trim() ||
+          translate(this.getLanguage(), "untitled"),
         categoryId,
         originalFileName,
         createdAt: new Date().toISOString(),
@@ -197,8 +200,7 @@ class Library {
           force: true,
         });
       } catch {
-        cleanupWarning =
-          "목록에서는 삭제했지만 복사 파일을 지우지 못했습니다. 앱을 종료한 뒤 저장 폴더를 확인해 주세요.";
+        cleanupWarning = translate(this.getLanguage(), "copyCleanupWarning");
       }
       return { library: this.snapshot(), cleanupWarning };
     });
@@ -216,7 +218,7 @@ class Library {
               name.toLocaleLowerCase("ko"),
         )
       ) {
-        throw new Error("같은 이름의 카테고리가 이미 있습니다.");
+        throw translatedError("duplicateCategoryName");
       }
       const next = this.snapshot();
       if (id === null) next.categories.push({ id: randomUUID(), name });
@@ -229,7 +231,7 @@ class Library {
   removeCategory(id) {
     return this.enqueue(async () => {
       this.requireCategory(id);
-      if (id === null) throw new Error("미분류는 삭제할 수 없습니다.");
+      if (id === null) throw translatedError("cannotDeleteUncategorized");
       const next = this.snapshot();
       next.categories = next.categories.filter(
         (category) => category.id !== id,

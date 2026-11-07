@@ -2,11 +2,33 @@ const query = document.getElementById("query");
 const count = document.getElementById("count");
 const previous = document.getElementById("previous");
 const next = document.getElementById("next");
+let labels = { finding: "검색 중…" };
+
+window.documentFind.onLanguage(({ language, labels: translated }) => {
+  labels = translated;
+  document.documentElement.lang = language;
+  document.title = labels.findTitle;
+  document
+    .querySelector(".findbar")
+    .setAttribute("aria-label", labels.findTitle);
+  query.placeholder = labels.findTitle;
+  query.setAttribute("aria-label", labels.findQuery);
+  count.setAttribute("aria-label", labels.findResults);
+  for (const [id, key, shortcut] of [
+    ["previous", "findPrevious", "Shift+Enter"],
+    ["next", "findNext", "Enter"],
+    ["close", "findClose", "Esc"],
+  ]) {
+    const button = document.getElementById(id);
+    button.setAttribute("aria-label", labels[key]);
+    button.title = `${labels[key]} (${shortcut})`;
+  }
+});
 
 function search(forward = true, advance = false) {
   previous.disabled = next.disabled = !query.value;
   if (!advance) {
-    count.textContent = query.value ? "검색 중…" : "";
+    count.textContent = query.value ? labels.finding : "";
     count.dataset.empty = "false";
   }
   window.documentFind.search(query.value, forward, advance);
