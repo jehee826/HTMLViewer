@@ -13,6 +13,9 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { Library } = require("./library.cjs");
 const { attachDocumentFind } = require("./document-find.cjs");
+const { Preferences } = require("./preferences.cjs");
+const { translate, translatedError, errorMessage } = require("./i18n.cjs");
+const { prepareLibraryMove } = require("./move-library.cjs");
 const {
   isStudyDocument,
   isStudyResource,
@@ -27,6 +30,8 @@ if (
 ) {
   app.setPath("userData", process.env.HTMLVIEWER_TEST_DATA);
 }
+const preferences = new Preferences(app.getPath("userData"));
+const t = (key, values) => translate(preferences.data.language, key, values);
 const devUrl =
   !app.isPackaged && process.env.HTMLVIEWER_DEV_URL === "http://127.0.0.1:5173"
     ? process.env.HTMLVIEWER_DEV_URL
@@ -42,7 +47,10 @@ protocol.registerSchemesAsPrivileged([
 
 let manager;
 let library;
+let selectedLibraryFolder = null;
+let movingLibrary = false;
 const viewers = new Map();
+const documentFind = new Map();
 const configuredSessions = new Set();
 
 function restrictWindow(window, allowedNavigation) {
@@ -88,12 +96,18 @@ function createManager() {
     (url) => url === managerUrl || url === `${managerUrl}/`,
   );
   manager.once("ready-to-show", () => manager.show());
+  manager.on("close", (event) => {
+    if (movingLibrary) event.preventDefault();
+  });
   manager.on("closed", () => {
     manager = null;
     for (const viewer of viewers.values()) viewer.close();
   });
   manager.loadURL(managerUrl).catch((error) => {
-    dialog.showErrorBox("관리 화면을 열지 못했습니다", error.message);
+    dialog.showErrorBox(
+      t("managerLoadError"),
+      errorMessage(error, preferences.data.language),
+    );
     app.quit();
   });
 }
@@ -155,14 +169,20 @@ async function openItem(id) {
     },
   });
   viewers.set(id, viewer);
-  attachDocumentFind(viewer);
+  documentFind.set(
+    id,
+    attachDocumentFind(viewer, () => preferences.data.language),
+  );
   restrictWindow(viewer, (url) => isStudyDocument(url, id));
   viewer.webContents.on("page-title-updated", (event) =>
     event.preventDefault(),
   );
   viewer.once("ready-to-show", () => viewer.show());
   viewer.on("closed", () => {
-    if (viewers.get(id) === viewer) viewers.delete(id);
+    if (viewers.get(id) === viewer) {
+      viewers.delete(id);
+      documentFind.delete(id);
+    }
   });
   try {
     await viewer.loadURL(`study://${id}/index.html`);
@@ -179,13 +199,18 @@ function handle(channel, action) {
       event.sender !== manager.webContents ||
       event.senderFrame !== manager.webContents.mainFrame
     ) {
-      throw new Error("관리 화면에서만 사용할 수 있습니다.");
+      throw new Error(t("managerOnly"));
     }
     try {
+      if (movingLibrary && channel !== "settings:get")
+        throw translatedError("storageBusy");
       return { ok: true, value: await action(...args) };
     } catch (error) {
       console.error(`[${channel}]`, error.message);
-      return { ok: false, error: error.message };
+      return {
+        ok: false,
+        error: errorMessage(error, preferences.data.language),
+      };
     }
   });
 }
@@ -203,17 +228,96 @@ else {
     .whenReady()
     .then(async () => {
       Menu.setApplicationMenu(null);
-      library = new Library(app.getPath("userData"));
+      await preferences.init();
+      if (preferences.data.libraryPath) {
+        try {
+          await fs.access(
+            path.join(preferences.data.libraryPath, "library.json"),
+          );
+        } catch {
+          throw translatedError("storageUnavailable", {
+            path: preferences.data.libraryPath,
+          });
+        }
+      }
+      library = new Library(
+        preferences.data.libraryPath ?? preferences.root,
+        () => preferences.data.language,
+      );
       await library.init();
       denyPermissions(session.defaultSession);
+      const getSettings = () => ({
+        ...preferences.snapshot(),
+        libraryPath: library.root,
+        defaultLibraryPath: preferences.root,
+      });
+      handle("settings:get", getSettings);
+      handle("settings:language", async (language) => {
+        await preferences.update({ language });
+        for (const refresh of documentFind.values()) refresh();
+        return getSettings();
+      });
+      handle("settings:choose-folder", async () => {
+        selectedLibraryFolder = null;
+        const result = await dialog.showOpenDialog(manager, {
+          title: t("storageChoose"),
+          buttonLabel: t("select"),
+          defaultPath: library.root,
+          properties: ["openDirectory"],
+        });
+        if (result.canceled || !result.filePaths.length) return null;
+        selectedLibraryFolder = result.filePaths[0];
+        return selectedLibraryFolder;
+      });
+      handle("settings:move-library", async () => {
+        if (!selectedLibraryFolder) throw translatedError("storagePickFirst");
+        const destination = selectedLibraryFolder;
+        selectedLibraryFolder = null;
+        movingLibrary = true;
+        try {
+          const move = await prepareLibraryMove(
+            library,
+            destination,
+            preferences.root,
+          );
+          try {
+            const defaultRoot = await fs.realpath(preferences.root);
+            await preferences.update({
+              libraryPath:
+                move.library.root === defaultRoot ? null : move.library.root,
+            });
+          } catch (error) {
+            if (!(await move.cancel()))
+              throw translatedError(
+                "storageRollbackFailed",
+                { path: move.library.root },
+                error,
+              );
+            throw error;
+          }
+          library = move.library;
+          const complete = await move.cleanupSource();
+          return {
+            settings: getSettings(),
+            library: library.snapshot(),
+            cleanupWarning: complete ? null : t("storageOldCleanupWarning"),
+          };
+        } finally {
+          movingLibrary = false;
+        }
+      });
+      handle("settings:open-app-data", async () => {
+        const error = await shell.openPath(preferences.root);
+        if (error) throw new Error(error);
+      });
       handle("library:list", () => library.snapshot());
       handle("library:import", async (categoryId) => {
         library.requireCategory(categoryId);
         const result = await dialog.showOpenDialog(manager, {
-          title: "HTML 파일 등록",
-          buttonLabel: "등록",
+          title: t("importDialog"),
+          buttonLabel: t("importButton"),
           properties: ["openFile"],
-          filters: [{ name: "HTML 문서", extensions: ["html", "htm"] }],
+          filters: [{ name: t("htmlDocument"), extensions: ["html", "htm"] }],
         });
         if (result.canceled || !result.filePaths.length) return null;
         return library.importFile(result.filePaths[0], categoryId);
@@ -232,7 +336,7 @@ else {
         } catch {
           result.cleanupWarning = [
             result.cleanupWarning,
-            "HTML의 저장 데이터를 완전히 지우지 못했습니다.",
+            t("storageCleanupWarning"),
           ]
             .filter(Boolean)
             .join(" ");
@@ -249,7 +353,10 @@ else {
       createManager();
     })
     .catch((error) => {
-      dialog.showErrorBox("HTMLViewer 시작 오류", error.message);
+      dialog.showErrorBox(
+        t("startError"),
+        errorMessage(error, preferences.data.language),
+      );
       app.quit();
     });
   app.on("window-all-closed", () => app.quit());

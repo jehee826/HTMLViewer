@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
+import { createTranslator } from "./i18n.js";
 
 function Icon({ name, size = 20, ...props }) {
   const paths = {
@@ -43,6 +44,12 @@ function Icon({ name, size = 20, ...props }) {
         <path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v3" />
       </>
     ),
+    gear: (
+      <>
+        <path d="M10 3h4l.5 2.5 2 .9 2-.9 2 3.5-1.7 1.4v2.2l1.7 1.4-2 3.5-2-.9-2 .9L14 20h-4l-.5-2.5-2-.9-2 .9-2-3.5 1.7-1.4v-2.2L3 9l2-3.5 2 .9 2-.9Z" />
+        <circle cx="12" cy="11.5" r="3" />
+      </>
+    ),
     settings: (
       <>
         <path d="M4 7h16M4 17h16" />
@@ -76,13 +83,16 @@ function Icon({ name, size = 20, ...props }) {
 }
 
 async function call(method, ...args) {
-  if (!window.htmlViewer) throw new Error("Electron 앱에서 실행해 주세요.");
+  if (!window.htmlViewer)
+    throw new Error(
+      createTranslator(document.documentElement.lang)("electronOnly"),
+    );
   const result = await window.htmlViewer[method](...args);
   if (!result.ok) throw new Error(result.error);
   return result.value;
 }
 
-function Notice({ notice, dismiss }) {
+function Notice({ notice, dismiss, t }) {
   if (!notice) return null;
   return (
     <div
@@ -90,14 +100,18 @@ function Notice({ notice, dismiss }) {
       role={notice.error ? "alert" : "status"}
     >
       <span>{notice.text}</span>
-      <button className="icon-button" onClick={dismiss} aria-label="알림 닫기">
+      <button
+        className="icon-button"
+        onClick={dismiss}
+        aria-label={t("dismissNotice")}
+      >
         <Icon name="close" size={16} />
       </button>
     </div>
   );
 }
 
-function Modal({ title, children, onClose, busy, notice, dismiss }) {
+function Modal({ title, children, onClose, busy, notice, dismiss, t }) {
   const ref = useRef(null);
   const heading = React.useId();
   useEffect(() => {
@@ -119,18 +133,21 @@ function Modal({ title, children, onClose, busy, notice, dismiss }) {
           className="icon-button"
           disabled={busy}
           onClick={onClose}
-          aria-label="닫기"
+          aria-label={t("close")}
         >
           <Icon name="close" />
         </button>
       </div>
-      <Notice notice={notice} dismiss={dismiss} />
+      <Notice notice={notice} dismiss={dismiss} t={t} />
       {children}
     </dialog>
   );
 }
 
 function App() {
+  const [preferences, setPreferences] = useState({ language: "ko" });
+  const language = preferences.language;
+  const t = createTranslator(language);
   const [library, setLibrary] = useState({ items: [], categories: [] });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -146,7 +163,12 @@ function App() {
   async function load() {
     setLoading(true);
     try {
-      setLibrary(await call("getLibrary"));
+      const [data, settings] = await Promise.all([
+        call("getLibrary"),
+        call("getSettings"),
+      ]);
+      setLibrary(data);
+      setPreferences(settings);
       setNotice(null);
     } catch (error) {
       setNotice({ text: error.message, error: true });
@@ -157,6 +179,10 @@ function App() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   async function run(action) {
     if (busy) return;
@@ -169,6 +195,17 @@ function App() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function changeLanguage(value) {
+    await run(async () => setPreferences(await call("setLanguage", value)));
+  }
+
+  async function chooseLibraryFolder() {
+    await run(async () => {
+      const folder = await call("chooseLibraryFolder");
+      if (folder) setModal({ type: "moveLibrary", folder });
+    });
   }
 
   function closeModal() {
@@ -186,7 +223,7 @@ function App() {
         setLibrary(result);
         setSearch("");
         setNotice({
-          text: "HTML을 등록했습니다. 카드를 클릭해서 열어 보세요.",
+          text: t("imported"),
         });
       }
     });
@@ -199,16 +236,20 @@ function App() {
           ? item.categoryId === null
           : item.categoryId === filter)) &&
       item.title
-        .toLocaleLowerCase("ko")
-        .includes(search.trim().toLocaleLowerCase("ko")),
+        .toLocaleLowerCase(language)
+        .includes(search.trim().toLocaleLowerCase(language)),
   );
   const categoryTitle =
     filter === "all"
-      ? "내 HTML 보관함"
+      ? t("libraryTitle")
       : filter === "uncategorized"
-        ? "미분류"
+        ? t("uncategorized")
         : (library.categories.find((category) => category.id === filter)
-            ?.name ?? "내 HTML 보관함");
+            ?.name ?? t("libraryTitle"));
+  const dateFormatter = new Intl.DateTimeFormat(
+    language === "en" ? "en-US" : "ko-KR",
+    { year: "numeric", month: "2-digit", day: "2-digit" },
+  );
   const categoryCount = (id) =>
     library.items.filter((item) => item.categoryId === id).length;
 
@@ -221,24 +262,24 @@ function App() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar" aria-label="보관함 탐색">
+      <aside className="sidebar" aria-label={t("libraryNavigation")}>
         <div className="brand">
           <span className="brand-icon">
             <Icon name="code" size={24} />
           </span>
           <span>
             HTMLViewer
-            <span className="brand-caption">나만의 HTML 라이브러리</span>
+            <span className="brand-caption">{t("brandCaption")}</span>
           </span>
         </div>
-        <div className="sidebar-section-label">라이브러리</div>
+        <div className="sidebar-section-label">{t("library")}</div>
         <nav>
           <button
             className={`nav-item ${filter === "all" ? "selected" : ""}`}
             onClick={() => setFilter("all")}
           >
             <Icon name="grid" />
-            <span>전체 HTML</span>
+            <span>{t("allHtml")}</span>
             <span className="nav-count">{library.items.length}</span>
           </button>
           <button
@@ -246,14 +287,14 @@ function App() {
             onClick={() => setFilter("uncategorized")}
           >
             <Icon name="folder" />
-            <span>미분류</span>
+            <span>{t("uncategorized")}</span>
             <span className="nav-count">{categoryCount(null)}</span>
           </button>
           <div className="category-heading">
-            <span className="sidebar-section-label">카테고리</span>
+            <span className="sidebar-section-label">{t("categories")}</span>
             <button
               className="icon-button"
-              aria-label="카테고리 추가"
+              aria-label={t("addCategory")}
               disabled={busy || loading}
               onClick={() => {
                 setCategoryName("");
@@ -277,14 +318,21 @@ function App() {
             </button>
           ))}
           {!library.categories.length && (
-            <p className="category-hint">
-              필요할 때 카테고리를
-              <br />
-              추가해 정리하세요.
-            </p>
+            <p className="category-hint">{t("categoryHint")}</p>
           )}
         </nav>
         <div className="sidebar-bottom">
+          <button
+            className="sidebar-action"
+            disabled={busy || loading}
+            onClick={() => {
+              setNotice(null);
+              setModal({ type: "settings" });
+            }}
+          >
+            <Icon name="gear" size={18} />
+            {t("settings")}
+          </button>
           <button
             className="sidebar-action"
             disabled={busy || loading}
@@ -296,7 +344,7 @@ function App() {
             }}
           >
             <Icon name="settings" size={18} />
-            카테고리 관리
+            {t("manageCategories")}
           </button>
           <button
             className="sidebar-action"
@@ -304,27 +352,27 @@ function App() {
             onClick={() => run(() => call("openDataFolder"))}
           >
             <Icon name="folder" size={18} />
-            저장 폴더 열기
+            {t("openDataFolder")}
           </button>
           <div className="local-note">
             <Icon name="lock" size={15} />
-            <span>모든 자료는 이 PC에만 저장됩니다.</span>
+            <span>{t("localNote")}</span>
           </div>
         </div>
       </aside>
       <main>
         <header className="topbar">
-          <span>내 공부 자료, 한곳에.</span>
+          <span>{t("tagline")}</span>
           <span className="offline-badge">
             <span />
-            로컬 보관함
+            {t("localLibrary")}
           </span>
         </header>
         <div className="content">
           <div className="page-heading">
             <div>
               <h1>{categoryTitle}</h1>
-              <p>모아둔 HTML을 클릭하고, 바로 이어서 공부하세요.</p>
+              <p>{t("pageDescription")}</p>
             </div>
             <button
               className="button primary"
@@ -332,16 +380,18 @@ function App() {
               disabled={busy || loading}
             >
               <Icon name="plus" size={19} />
-              HTML 등록
+              {t("importHtml")}
             </button>
           </div>
-          {!modal && <Notice notice={notice} dismiss={() => setNotice(null)} />}
+          {!modal && (
+            <Notice notice={notice} dismiss={() => setNotice(null)} t={t} />
+          )}
           <div className="toolbar">
             <label className="search">
               <Icon name="search" size={19} />
               <input
-                aria-label="제목 검색"
-                placeholder="제목으로 검색"
+                aria-label={t("titleSearch")}
+                placeholder={t("searchPlaceholder")}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
@@ -349,20 +399,22 @@ function App() {
                 <button
                   className="icon-button"
                   onClick={() => setSearch("")}
-                  aria-label="검색어 지우기"
+                  aria-label={t("clearSearch")}
                 >
                   <Icon name="close" size={15} />
                 </button>
               )}
             </label>
             <span className="result-count">
-              {filtered.length}개의 HTML
-              <span className="sort-label">최근 등록순</span>
+              {t(filtered.length === 1 ? "oneHtml" : "manyHtml", {
+                count: filtered.length,
+              })}
+              <span className="sort-label">{t("newestFirst")}</span>
             </span>
           </div>
           {loading ? (
             <div className="empty-state" role="status">
-              보관함을 불러오는 중입니다.
+              {t("loading")}
             </div>
           ) : filtered.length ? (
             <div className="card-grid">
@@ -374,7 +426,7 @@ function App() {
                   <article className="html-card" key={item.id}>
                     <button
                       className="card-open"
-                      aria-label={`${item.title} 열기`}
+                      aria-label={t("openNamed", { name: item.title })}
                       disabled={busy}
                       onClick={() => run(() => call("openItem", item.id))}
                     >
@@ -389,27 +441,24 @@ function App() {
                         {item.originalFileName}
                       </p>
                       <span className="category-chip">
-                        {category?.name ?? "미분류"}
+                        {category?.name ?? t("uncategorized")}
                       </span>
                       <span className="card-launch">
-                        열기
+                        {t("open")}
                         <Icon name="arrow" size={17} />
                       </span>
                     </button>
                     <div className="card-footer">
                       <time dateTime={item.createdAt}>
-                        {new Intl.DateTimeFormat("ko-KR", {
-                          year: "numeric",
-                          month: "2-digit",
-                          day: "2-digit",
-                        }).format(new Date(item.createdAt))}{" "}
-                        등록
+                        {t("registeredOn", {
+                          date: dateFormatter.format(new Date(item.createdAt)),
+                        })}
                       </time>
                       <div>
                         <button
                           className="icon-button"
                           disabled={busy}
-                          aria-label={`${item.title} 수정`}
+                          aria-label={t("editNamed", { name: item.title })}
                           onClick={() => openEditor(item)}
                         >
                           <Icon name="edit" size={16} />
@@ -417,7 +466,7 @@ function App() {
                         <button
                           className="icon-button delete-button"
                           disabled={busy}
-                          aria-label={`${item.title} 삭제`}
+                          aria-label={t("deleteNamed", { name: item.title })}
                           onClick={() => {
                             setNotice(null);
                             setModal({ type: "delete", item });
@@ -438,28 +487,18 @@ function App() {
               </span>
               <h2>
                 {search
-                  ? "검색 결과가 없습니다"
+                  ? t("noResults")
                   : library.items.length
-                    ? "아직 이곳에 등록한 HTML이 없어요"
-                    : "첫 HTML을 등록해 보세요"}
+                    ? t("noCategoryItems")
+                    : t("firstHtml")}
               </h2>
-              <p>
-                {search ? (
-                  "다른 제목으로 검색해 보세요."
-                ) : (
-                  <>
-                    공부 자료나 문제풀이 HTML 파일을 모아두고
-                    <br />
-                    클릭 한 번으로 별도 창에서 열 수 있어요.
-                  </>
-                )}
-              </p>
+              <p>{search ? t("trySearch") : <>{t("emptyDescription")}</>}</p>
               {search ? (
                 <button
                   className="button secondary"
                   onClick={() => setSearch("")}
                 >
-                  검색 초기화
+                  {t("resetSearch")}
                 </button>
               ) : (
                 <button
@@ -468,34 +507,117 @@ function App() {
                   onClick={importHtml}
                 >
                   <Icon name="plus" size={18} />
-                  HTML 등록
+                  {t("importHtml")}
                 </button>
               )}
             </div>
           )}
           <p className="support-note">
             <Icon name="lock" size={14} />
-            내부 CSS·JavaScript가 포함된 단일 HTML 지원
-            <span>원본을 옮겨도 등록한 파일은 유지돼요.</span>
+            {t("supportNote")}
+            <span>{t("copyNote")}</span>
           </p>
         </div>
       </main>
       {modal && (
         <Modal
+          t={t}
           title={
-            modal.type === "edit"
-              ? "HTML 정보 수정"
-              : modal.type === "delete"
-                ? "HTML 삭제"
-                : modal.type === "deleteCategory"
-                  ? "카테고리 삭제"
-                  : "카테고리 관리"
+            modal.type === "settings"
+              ? t("settings")
+              : modal.type === "moveLibrary"
+                ? t("storageMoveTitle")
+                : modal.type === "edit"
+                  ? t("editHtml")
+                  : modal.type === "delete"
+                    ? t("deleteHtml")
+                    : modal.type === "deleteCategory"
+                      ? t("deleteCategory")
+                      : t("manageCategories")
           }
           onClose={closeModal}
           busy={busy}
           notice={notice}
           dismiss={() => setNotice(null)}
         >
+          {modal.type === "settings" && (
+            <>
+              <label className="field">
+                {t("language")}
+                <select
+                  aria-label="언어 / Language"
+                  value={language}
+                  disabled={busy}
+                  onChange={(event) => changeLanguage(event.target.value)}
+                >
+                  <option value="ko">한국어</option>
+                  <option value="en">English</option>
+                </select>
+              </label>
+              <p className="muted">{t("languageHint")}</p>
+              <section className="storage-settings">
+                <h3>{t("storageFolder")}</h3>
+                <p className="muted">{t("storageHint")}</p>
+                <p className="storage-path">{preferences.libraryPath}</p>
+                <button
+                  className="button secondary"
+                  disabled={busy}
+                  onClick={chooseLibraryFolder}
+                >
+                  <Icon name="folder" size={17} />
+                  {t("chooseFolder")}
+                </button>
+                <p className="muted small">{t("storageRecordsHint")}</p>
+                <button
+                  className="text-button"
+                  disabled={busy}
+                  onClick={() => run(() => call("openAppDataFolder"))}
+                >
+                  {t("appDataFolder")}
+                </button>
+              </section>
+            </>
+          )}
+          {modal.type === "moveLibrary" && (
+            <>
+              <p className="muted">{t("storageMoveDescription")}</p>
+              <p className="storage-path">{modal.folder}</p>
+              <p className="muted small">{t("storageEmptyHint")}</p>
+              <p className="muted small">{t("storageKeepRecords")}</p>
+              {busy && (
+                <p role="status" className="muted">
+                  {t("storageMoveProgress")}
+                </p>
+              )}
+              <div className="modal-actions">
+                <button
+                  className="button secondary"
+                  disabled={busy}
+                  onClick={() => setModal({ type: "settings" })}
+                >
+                  {t("cancel")}
+                </button>
+                <button
+                  className="button primary"
+                  disabled={busy}
+                  onClick={() =>
+                    run(async () => {
+                      const result = await call("moveLibrary");
+                      setLibrary(result.library);
+                      setPreferences(result.settings);
+                      setModal({ type: "settings" });
+                      setNotice({
+                        text: result.cleanupWarning ?? t("storageMoved"),
+                        error: Boolean(result.cleanupWarning),
+                      });
+                    })
+                  }
+                >
+                  {t("storageMove")}
+                </button>
+              </div>
+            </>
+          )}
           {modal.type === "edit" && (
             <form
               onSubmit={(event) => {
@@ -514,7 +636,7 @@ function App() {
               }}
             >
               <label className="field">
-                제목
+                {t("title")}
                 <input
                   autoFocus
                   required
@@ -524,12 +646,12 @@ function App() {
                 />
               </label>
               <label className="field">
-                카테고리
+                {t("category")}
                 <select
                   value={categoryId}
                   onChange={(event) => setCategoryId(event.target.value)}
                 >
-                  <option value="">미분류</option>
+                  <option value="">{t("uncategorized")}</option>
                   {library.categories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
@@ -544,13 +666,13 @@ function App() {
                   disabled={busy}
                   onClick={closeModal}
                 >
-                  취소
+                  {t("cancel")}
                 </button>
                 <button
                   className="button primary"
                   disabled={busy || !title.trim()}
                 >
-                  저장
+                  {t("save")}
                 </button>
               </div>
             </form>
@@ -558,12 +680,14 @@ function App() {
           {modal.type === "delete" && (
             <>
               <p className="delete-copy">
-                <strong>{modal.item.title}</strong>을(를) 보관함에서 삭제할까요?
+                {t("deleteItemPrefix")}
+                <strong>{modal.item.title}</strong>
+                {t("deleteItemSuffix")}
               </p>
               <p className="muted">
-                복사된 HTML과 해당 HTML의 저장 데이터가 삭제됩니다.
+                {t("deleteItemWarning")}
                 <br />
-                원본 파일은 유지됩니다. 이 작업은 되돌릴 수 없습니다.
+                {t("deleteOriginalNote")}
               </p>
               <div className="modal-actions">
                 <button
@@ -571,7 +695,7 @@ function App() {
                   disabled={busy}
                   onClick={closeModal}
                 >
-                  취소
+                  {t("cancel")}
                 </button>
                 <button
                   className="button danger"
@@ -586,7 +710,7 @@ function App() {
                     })
                   }
                 >
-                  삭제
+                  {t("delete")}
                 </button>
               </div>
             </>
@@ -607,14 +731,14 @@ function App() {
                 }}
               >
                 <label className="field">
-                  {editingCategory ? "카테고리 이름 수정" : "새 카테고리"}
+                  {editingCategory ? t("renameCategory") : t("newCategory")}
                   <div className="input-row">
                     <input
                       autoFocus
                       required
                       maxLength={100}
-                      aria-label="카테고리 이름"
-                      placeholder="예: JavaScript, 영어, 알고리즘"
+                      aria-label={t("categoryName")}
+                      placeholder={t("categoryPlaceholder")}
                       value={categoryName}
                       onChange={(event) => setCategoryName(event.target.value)}
                     />
@@ -622,7 +746,7 @@ function App() {
                       className="button primary"
                       disabled={busy || !categoryName.trim()}
                     >
-                      {editingCategory ? "저장" : "추가"}
+                      {editingCategory ? t("save") : t("add")}
                     </button>
                   </div>
                 </label>
@@ -635,7 +759,7 @@ function App() {
                       setCategoryName("");
                     }}
                   >
-                    수정 취소
+                    {t("cancelEdit")}
                   </button>
                 )}
               </form>
@@ -646,12 +770,18 @@ function App() {
                       <Icon name="folder" size={18} />
                       <span>
                         {category.name}
-                        <small>{categoryCount(category.id)}개</small>
+                        <small>
+                          {t("categoryItems", {
+                            count: categoryCount(category.id),
+                          })}
+                        </small>
                       </span>
                       <button
                         className="icon-button"
                         disabled={busy}
-                        aria-label={`${category.name} 카테고리 수정`}
+                        aria-label={t("editCategoryNamed", {
+                          name: category.name,
+                        })}
                         onClick={() => {
                           setEditingCategory(category.id);
                           setCategoryName(category.name);
@@ -662,7 +792,9 @@ function App() {
                       <button
                         className="icon-button delete-button"
                         disabled={busy}
-                        aria-label={`${category.name} 카테고리 삭제`}
+                        aria-label={t("deleteCategoryNamed", {
+                          name: category.name,
+                        })}
                         onClick={() => {
                           setNotice(null);
                           setModal({ type: "deleteCategory", category });
@@ -673,29 +805,27 @@ function App() {
                     </div>
                   ))
                 ) : (
-                  <p className="muted">아직 등록한 카테고리가 없습니다.</p>
+                  <p className="muted">{t("noCategories")}</p>
                 )}
               </div>
-              <p className="muted small">
-                카테고리를 삭제해도 HTML은 미분류에 남습니다.
-              </p>
+              <p className="muted small">{t("categoryDeleteHint")}</p>
             </>
           )}
           {modal.type === "deleteCategory" && (
             <>
               <p className="delete-copy">
-                <strong>{modal.category.name}</strong> 카테고리를 삭제할까요?
+                {t("deleteCategoryPrefix")}
+                <strong>{modal.category.name}</strong>
+                {t("deleteCategorySuffix")}
               </p>
-              <p className="muted">
-                이 카테고리의 HTML은 삭제되지 않고 미분류로 이동합니다.
-              </p>
+              <p className="muted">{t("deleteCategoryWarning")}</p>
               <div className="modal-actions">
                 <button
                   className="button secondary"
                   disabled={busy}
                   onClick={() => setModal({ type: "categories" })}
                 >
-                  취소
+                  {t("cancel")}
                 </button>
                 <button
                   className="button danger"
@@ -713,7 +843,7 @@ function App() {
                     })
                   }
                 >
-                  카테고리 삭제
+                  {t("deleteCategory")}
                 </button>
               </div>
             </>

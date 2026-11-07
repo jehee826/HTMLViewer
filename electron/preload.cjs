@@ -1,6 +1,11 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("htmlViewer", {
+  getSettings: () => ipcRenderer.invoke("settings:get"),
+  setLanguage: (language) => ipcRenderer.invoke("settings:language", language),
+  chooseLibraryFolder: () => ipcRenderer.invoke("settings:choose-folder"),
+  moveLibrary: () => ipcRenderer.invoke("settings:move-library"),
+  openAppDataFolder: () => ipcRenderer.invoke("settings:open-app-data"),
   getLibrary: () => ipcRenderer.invoke("library:list"),
   importFile: (categoryId) => ipcRenderer.invoke("library:import", categoryId),
   updateItem: (id, title, categoryId) =>
