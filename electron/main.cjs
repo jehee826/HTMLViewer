@@ -12,6 +12,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { Library } = require("./library.cjs");
+const { attachDocumentFind } = require("./document-find.cjs");
 const {
   isStudyDocument,
   isStudyResource,
@@ -154,6 +155,7 @@ async function openItem(id) {
     },
   });
   viewers.set(id, viewer);
+  attachDocumentFind(viewer);
   restrictWindow(viewer, (url) => isStudyDocument(url, id));
   viewer.webContents.on("page-title-updated", (event) =>
     event.preventDefault(),

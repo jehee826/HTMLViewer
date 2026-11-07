@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
+    />
+    <title>문서에서 찾기</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 3px;
+        font:
+          13px "Segoe UI",
+          "Malgun Gothic",
+          sans-serif;
+        background: transparent;
+        color: #344058;
+      }
+      .findbar {
+        height: 50px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 7px 9px;
+        border: 1px solid #dce1eb;
+        border-radius: 9px;
+        background: #fff;
+        box-shadow: 0 2px 5px #17253e25;
+      }
+      input {
+        width: 100%;
+        min-width: 0;
+        flex: 1;
+        padding: 7px 6px;
+        border: 0;
+        outline: 0;
+        font: inherit;
+        color: inherit;
+      }
+      input::placeholder {
+        color: #949daf;
+      }
+      output {
+        min-width: 43px;
+        font-size: 12px;
+        white-space: nowrap;
+        text-align: center;
+        color: #818ba0;
+      }
+      output[data-empty="true"] {
+        color: #b44949;
+      }
+      button {
+        width: 29px;
+        height: 30px;
+        flex-shrink: 0;
+        border: 0;
+        border-radius: 5px;
+        background: #fff;
+        color: #687185;
+        cursor: pointer;
+        font:
+          18px "Segoe UI",
+          sans-serif;
+      }
+      button:hover {
+        color: #5965d9;
+        background: #eeeffd;
+      }
+      button:focus-visible {
+        outline: 2px solid #929ce6;
+      }
+      button:disabled {
+        opacity: 0.35;
+        cursor: default;
+      }
+      #close {
+        border-left: 1px solid #e9ecf2;
+        margin-left: 3px;
+        border-radius: 0 5px 5px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="findbar" role="search" aria-label="문서에서 찾기">
+      <input
+        id="query"
+        type="text"
+        aria-label="문서 검색어"
+        placeholder="문서에서 찾기"
+        maxlength="1000"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <output id="count" aria-live="polite" aria-label="검색 결과"></output>
+      <button
+        id="previous"
+        type="button"
+        title="이전 결과 (Shift+Enter)"
+        aria-label="이전 결과"
+        disabled
+      >
+        ↑
+      </button>
+      <button
+        id="next"
+        type="button"
+        title="다음 결과 (Enter)"
+        aria-label="다음 결과"
+        disabled
+      >
+        ↓
+      </button>
+      <button
+        id="close"
+        type="button"
+        title="검색 닫기 (Esc)"
+        aria-label="검색 닫기"
+      >
+        ×
+      </button>
+    </div>
+    <script src="find.js"></script>
+  </body>
+</html>
