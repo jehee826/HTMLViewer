@@ -133,4 +133,10 @@ npm run dist
 
 개발 중에는 `npm run dev`로 관리 화면과 Electron 앱을 함께 실행할 수 있습니다.
 
+### 릴리즈 등록
+
+`0.1.4`처럼 버전 이름의 브랜치에서 `npm version 0.1.4 --no-git-tag-version`으로 앱 버전을 맞춥니다. PR 본문의 **릴리즈 노트**에는 사용자에게 보이는 변경점만 적습니다. PR의 Actions 실행 요약에서 릴리즈 설명을 미리 볼 수 있습니다.
+
+버전 PR을 `main`에 병합하면 GitHub Actions가 테스트를 실행하고, 통과하면 Windows 설치형·무설치형 EXE와 SHA-256 체크섬을 빌드해 릴리즈에 올립니다. 설명에는 [공통 양식](.github/release-notes.md)이 적용됩니다. 노트 누락 등으로 게시가 실패하면 PR 본문을 수정한 뒤 같은 워크플로 실행의 **Re-run all jobs**를 선택하세요.
+
 </details>
