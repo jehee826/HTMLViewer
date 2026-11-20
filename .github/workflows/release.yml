@@ -1,0 +1,168 @@
+name: Windows 릴리즈
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited, closed]
+
+permissions: {}
+
+jobs:
+  prepare:
+    name: 릴리즈 노트 확인
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action != 'closed' || github.event.pull_request.merged == true)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      version: ${{ steps.notes.outputs.version }}
+      notes: ${{ steps.notes.outputs.notes }}
+    steps:
+      - name: 버전 브랜치 확인
+        id: branch
+        env:
+          SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if [[ "$SOURCE_BRANCH" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "versioned=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        if: steps.branch.outputs.versioned == 'true'
+        with:
+          ref: ${{ github.event.pull_request.merged && github.event.pull_request.merge_commit_sha || github.sha }}
+          persist-credentials: false
+      - name: 최신 PR 본문 가져오기
+        if: steps.branch.outputs.versioned == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" > pull-request.json
+      - name: 릴리즈 설명 구성
+        id: notes
+        if: steps.branch.outputs.versioned == 'true'
+        run: |
+          node scripts/release-notes.cjs release-notes.md < pull-request.json
+          cat release-notes.md >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    name: Windows x64 빌드
+    needs: prepare
+    if: github.event.action == 'closed' && github.event.pull_request.merged == true && needs.prepare.outputs.version != ''
+    runs-on: windows-2025
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: npm ci
+      - run: npm test
+      - run: npm run dist
+      - name: 배포 파일 체크섬 생성
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          $files = @(
+            "HTMLViewer-${env:RELEASE_VERSION}-x64-setup.exe",
+            "HTMLViewer-${env:RELEASE_VERSION}-x64-portable.exe"
+          )
+          $checksums = foreach ($file in $files) {
+            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath "release/$file").Hash.ToLowerInvariant()
+            "$hash  $file"
+          }
+          [IO.File]::WriteAllText((Join-Path $PWD 'release/SHA256SUMS.txt'), ($checksums -join "`n") + "`n")
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: windows-release
+          path: |
+            release/HTMLViewer-${{ needs.prepare.outputs.version }}-x64-setup.exe
+            release/HTMLViewer-${{ needs.prepare.outputs.version }}-x64-portable.exe
+            release/SHA256SUMS.txt
+          if-no-files-found: error
+          overwrite: true
+          compression-level: 0
+
+  publish:
+    name: GitHub 릴리즈 게시
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    permissions:
+      contents: write
+    concurrency:
+      group: windows-release-${{ needs.prepare.outputs.version }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: windows-release
+      - name: 태그와 첨부 파일 확인 후 게시
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_NOTES: ${{ needs.prepare.outputs.notes }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          tag="v$RELEASE_VERSION"
+          setup="HTMLViewer-$RELEASE_VERSION-x64-setup.exe"
+          portable="HTMLViewer-$RELEASE_VERSION-x64-portable.exe"
+          sha256sum --check --strict SHA256SUMS.txt
+          marker="<!-- htmlviewer-release-run:$GITHUB_RUN_ID -->"
+          printf '%s' "$RELEASE_NOTES" | base64 --decode > notes.md
+          printf '\n%s\n' "$marker" >> notes.md
+
+          # 이미 있는 태그가 다른 커밋을 가리키면 중단한다.
+          ref="refs/tags/$tag"
+          refs=$(git ls-remote "https://github.com/$GH_REPO.git" "$ref" "$ref^{}")
+          tagged_sha=$(awk -v ref="$ref" '$2 == ref { raw=$1 } $2 == ref "^{}" { peeled=$1 } END { print peeled ? peeled : raw }' <<< "$refs")
+          if [[ -n "$tagged_sha" && "$tagged_sha" != "$MERGE_SHA" ]]; then
+            echo "::error::$tag 태그가 다른 커밋을 가리킵니다."
+            exit 1
+          fi
+
+          releases=$(gh api "repos/$GH_REPO/releases?per_page=100" --paginate --slurp)
+          existing=$(jq -c --arg tag "$tag" '[.[][] | select(.tag_name == $tag)] | first // empty' <<< "$releases")
+          if [[ -n "$existing" ]]; then
+            if [[ "$(jq -r .draft <<< "$existing")" == "false" && "$tagged_sha" == "$MERGE_SHA" ]]; then
+              echo "$tag 릴리즈가 이미 게시되었습니다."
+              exit 0
+            fi
+            if ! jq -e --arg sha "$MERGE_SHA" --arg marker "$marker" \
+              '.draft and .target_commitish == $sha and (.body // "" | sub("[[:space:]]+$"; "") | endswith($marker))' <<< "$existing" > /dev/null; then
+              echo "::error::$tag 릴리즈가 있으며 이 실행에서 이어받을 수 없습니다."
+              exit 1
+            fi
+            gh release edit "$tag" --notes-file notes.md
+          else
+            gh release create "$tag" --draft --target "$MERGE_SHA" --title "HTMLViewer $RELEASE_VERSION" --notes-file notes.md
+          fi
+
+          gh release upload "$tag" "$setup" "$portable" SHA256SUMS.txt --clobber
+          release_id=$(gh release view "$tag" --json databaseId --jq .databaseId)
+          release=$(gh api "repos/$GH_REPO/releases/$release_id")
+          [[ "$(jq -r .draft <<< "$release")" == "true" ]]
+          [[ "$(jq '.assets | length' <<< "$release")" == 3 ]]
+          for file in "$setup" "$portable" SHA256SUMS.txt; do
+            digest="sha256:$(sha256sum "$file" | cut -d ' ' -f1)"
+            remote_digest=$(jq -r --arg name "$file" '.assets[] | select(.name == $name) | .digest' <<< "$release")
+            if [[ "$remote_digest" != "$digest" ]]; then
+              echo "::error::$file 첨부 파일의 SHA-256이 다릅니다."
+              exit 1
+            fi
+          done
+          gh api "repos/$GH_REPO/releases/$release_id" --method PATCH -F draft=false -f make_latest=legacy --jq .html_url
