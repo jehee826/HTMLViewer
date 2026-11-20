@@ -49,7 +49,10 @@ test("복사 검증 후 설정을 전환하고 앱이 관리하는 이전 파일
     await fs.readFile(path.join(source, "keep.txt"), "utf8"),
     "보존",
   );
-  assert.equal((await new Preferences(source).init()).libraryPath, destination);
+  assert.equal(
+    (await new Preferences(source).init()).libraryPath,
+    await fs.realpath(destination),
+  );
   const back = await prepareLibraryMove(move.library, source, source);
   await preferences.update({ libraryPath: back.library.root });
   assert.equal(await back.cleanupSource(), true);
