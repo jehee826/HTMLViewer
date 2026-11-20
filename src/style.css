@@ -67,14 +67,10 @@ svg {
   margin-bottom: 47px;
 }
 .brand-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  color: #fff;
-  background: #5965d9;
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  object-fit: contain;
 }
 .brand-caption {
   display: block;

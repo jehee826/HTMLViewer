@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
 import { createTranslator } from "./i18n.js";
+import appIcon from "../assets/icon.png";
 
 function Icon({ name, size = 20, ...props }) {
   const paths = {
@@ -264,9 +265,13 @@ function App() {
     <div className="app-shell">
       <aside className="sidebar" aria-label={t("libraryNavigation")}>
         <div className="brand">
-          <span className="brand-icon">
-            <Icon name="code" size={24} />
-          </span>
+          <img
+            className="brand-icon"
+            src={appIcon}
+            width="44"
+            height="44"
+            alt=""
+          />
           <span>
             HTMLViewer
             <span className="brand-caption">{t("brandCaption")}</span>
