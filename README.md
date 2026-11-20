@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/htmlviewer.svg" width="88" height="88" alt="HTMLViewer 로고" />
+<img src="assets/icon.png" width="88" height="88" alt="HTML 문서를 담은 서랍 모양의 HTMLViewer 로고" />
 
 <h1>HTMLViewer</h1>
 

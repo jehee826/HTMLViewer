@@ -38,6 +38,11 @@ const devUrl =
     : null;
 const managerUrl =
   devUrl || pathToFileURL(path.join(__dirname, "../dist/index.html")).href;
+const appIcon = path.join(
+  __dirname,
+  "../assets",
+  process.platform === "win32" ? "icon.ico" : "icon.png",
+);
 protocol.registerSchemesAsPrivileged([
   {
     scheme: "study",
@@ -81,6 +86,7 @@ function createManager() {
     minWidth: 920,
     minHeight: 640,
     title: "HTMLViewer",
+    icon: appIcon,
     backgroundColor: "#f7f8fa",
     show: false,
     webPreferences: {
@@ -156,6 +162,7 @@ async function openItem(id) {
     minWidth: 500,
     minHeight: 400,
     title: item.title,
+    icon: appIcon,
     backgroundColor: "#ffffff",
     show: false,
     webPreferences: {
